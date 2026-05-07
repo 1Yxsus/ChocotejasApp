@@ -241,6 +241,11 @@ window.openSummary = () => {
     void modal.offsetWidth;
     modal.classList.remove('opacity-0');
     content.classList.remove('translate-y-full');
+    
+    // Actualizar la fecha del reporte
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const formattedDate = new Date().toLocaleDateDateString ? new Date().toLocaleDateString('es-ES', dateOptions) : new Date().toLocaleString('es-ES', dateOptions);
+    document.getElementById('report-date').innerText = `Generado el: ${formattedDate}`;
 
     const items = window.chocotejasState.items;
     let totalSales = 0;
