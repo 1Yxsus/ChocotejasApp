@@ -1,0 +1,35 @@
+/* Estilos personalizados para optimizar la experiencia en móviles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Ocultar scrollbar para un aspecto más limpio de app nativa */
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+/* Estilización del selector de color */
+input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    width: 100%;
+    height: 48px;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 0.75rem;
+}
+
+/* Sombra de la barra inferior */
+.bottom-bar-shadow {
+    box-shadow: 0 -10px 40px rgba(252, 165, 165, 0.2);
+}
