@@ -17,6 +17,9 @@ const hideLoader = () => {
 
 // Renderizado de UI Principal
 window.renderItems = (items) => {
+    // Verificar si el loader ya se ocultó y no volver a intentar en subsecuentes renderItems
+    hideLoader();
+
     const container = document.getElementById('chocotejas-grid');
     const emptyState = document.getElementById('empty-state');
 
@@ -39,7 +42,7 @@ window.renderItems = (items) => {
         const mainColor = item.color || '#ec4899';
 
         return `
-        <div class="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 border border-gray-100 relative overflow-hidden transition-all duration-300 transform">
+        <div class="bg-surface rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 border border-gray-100 relative overflow-hidden transition-all duration-300 transform">
             <!-- Barra de color lateral -->
             <div class="absolute top-0 left-0 w-2.5 h-full" style="background-color: ${mainColor}"></div>
             
@@ -89,7 +92,6 @@ window.renderItems = (items) => {
     }).join('');
 
     lucide.createIcons();
-    hideLoader();
 };
 
 function saveDataToLocal() {
@@ -107,7 +109,7 @@ function loadData() {
     }
     
     renderItems(window.chocotejasState.items);
-    setTimeout(hideLoader, 500);
+    hideLoader(); // Asegurarnos de llamar a hideLoader incluso si items está vacío y ocurre un early return
 }
 
 // Iniciar carga de datos locales
@@ -291,39 +293,43 @@ window.closeSummary = () => {
     setTimeout(() => { modal.classList.add('hidden'); }, 300);
 };
 
-window.exportCSV = () => {
+window.exportPDF = () => {
     const items = window.chocotejasState.items;
     if(items.length === 0) return alert("No hay datos para exportar.");
 
-    let csv = "Nombre,Stock Inicial,Ventas,Stock Restante,Precio Venta (S/),Costo Unitario (S/),Ingresos Brutos (S/),Ganancia Neta (S/)\n";
+    // Obtener el elemento que queremos convertir a PDF (la zona de reporte)
+    const element = document.getElementById('pdf-content-area');
     
-    items.forEach(i => {
-        const sales = i.sales || 0;
-        const remaining = i.stock - sales;
-        const revenue = sales * i.price;
-        const profit = sales * (i.price - (i.cost || 0));
-        
-        // Escapar comillas en nombres por si acaso
-        const safeName = i.name.replace(/"/g, '""');
-        csv += `"${safeName}",${i.stock},${sales},${remaining},${i.price},${i.cost || 0},${revenue},${profit}\n`;
-    });
-
-    // Codificar con BOM para que Excel detecte acentos correctamente en UTF-8
-    const bom = "\uFEFF";
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-    
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    
-    // Nombre de archivo con fecha
+    // Configuraciones de html2pdf
     const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute("download", `Reporte_Chocotejas_${dateStr}.csv`);
+    const opt = {
+        margin:       10,
+        filename:     `Reporte_Chocotejas_${dateStr}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Forzar modo claro (pink) temporalmente para la exportación
+    const originalTheme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'pink');
+
+    // Generar el PDF y luego restaurar el tema
+    html2pdf().set(opt).from(element).save().then(() => {
+        document.documentElement.setAttribute('data-theme', originalTheme);
+    });
+};
+
+const THEMES = ['pink', 'light', 'dark'];
+window.cycleTheme = () => {
+    let currentTheme = window.currentTheme || localStorage.getItem('chocoventas_theme') || 'pink';
+    let idx = THEMES.indexOf(currentTheme);
+    idx = (idx + 1) % THEMES.length;
+    let newTheme = THEMES[idx];
     
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.currentTheme = newTheme;
+    localStorage.setItem('chocoventas_theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
 };
 
 // Iniciar íconos en carga
