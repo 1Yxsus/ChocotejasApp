@@ -119,11 +119,18 @@
 
     <!-- Barra Inferior Flotante (Resumen) -->
     <div class="fixed bottom-0 left-0 w-full p-4 bg-surface/80 backdrop-blur-xl border-t border-pink-100 z-40 bottom-bar-shadow flex justify-center pb-6 sm:pb-4">
-        <div class="max-w-md w-full">
-            <button onclick="window.openSummary()" class="w-full py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold rounded-2xl shadow-[0_8px_20px_rgba(236,72,153,0.3)] text-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+        <div class="max-w-md w-full flex gap-3">
+            <button onclick="window.openSummary()" class="flex-1 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold rounded-2xl shadow-[0_8px_20px_rgba(236,72,153,0.3)] text-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
                 <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
                 Ver Resumen Total
             </button>
+            <a href="https://www.instagram.com/jxsus_0801/" target="_blank" rel="noopener noreferrer" class="w-[60px] flex items-center justify-center bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white rounded-2xl shadow-[0_8px_20px_rgba(220,39,67,0.3)] active:scale-95 transition-transform" title="Visítame en Instagram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+            </a>
         </div>
     </div>
 
@@ -238,5 +245,13 @@
     </div>
 
     <script type="module" src="app.js"></script>
+    <script>
+        // Asegurarnos de que los iconos estáticos siempre se rendericen al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            if(window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+    </script>
 </body>
 </html>
