@@ -1,12 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
 // Estado Global de la App
 window.chocotejasState = { items: [] };
-let db, auth, currentUser, appId;
-let unsubscribe = null;
 let isInitialLoad = true;
+const STORAGE_KEY = 'chocoventas_data';
 
 // Utilidades Visuales
 const formatMoney = (amount) => parseFloat(amount).toFixed(2);
@@ -97,92 +92,40 @@ window.renderItems = (items) => {
     hideLoader();
 };
 
-// Configuración y conexión de datos (Transparente para el usuario)
-try {
-    const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-    appId = typeof __app_id !== 'undefined' ? __app_id : 'local-app';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+function saveDataToLocal() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(window.chocotejasState.items));
+}
 
-    if (firebaseConfigStr) {
-        const firebaseConfig = JSON.parse(firebaseConfigStr);
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-
-        const initAuth = async () => {
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-        
-        initAuth();
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                loadData();
-            } else {
-                currentUser = null;
-                if (unsubscribe) unsubscribe();
-                window.chocotejasState.items = [];
-                renderItems([]);
-            }
-        });
-    } else {
-        // Fallback seguro si se ejecuta fuera de la plataforma
-        console.log("Modo local activado.");
-        renderItems(window.chocotejasState.items);
-        setTimeout(hideLoader, 500);
+function loadData() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            window.chocotejasState.items = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error("Error cargando datos locales:", e);
     }
-} catch (e) {
-    console.error("Configuración local requerida:", e);
+    
     renderItems(window.chocotejasState.items);
     setTimeout(hideLoader, 500);
 }
 
-function loadData() {
-    if (!currentUser || !db) return;
-    const path = `artifacts/${appId}/users/${currentUser.uid}/chocotejas`;
-    const colRef = collection(db, path);
-    
-    unsubscribe = onSnapshot(colRef, (snapshot) => {
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Ordenar por fecha de creación
-        items.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-        window.chocotejasState.items = items;
-        renderItems(items);
-    }, (error) => {
-        console.error("Error sincronizando:", error);
-        hideLoader();
-    });
-}
+// Iniciar carga de datos locales
+loadData();
 
 // --- LÓGICA DE NEGOCIO Y FUNCIONES GLOBALES ---
 
 window.saveItem = async (itemData) => {
-    if (db && currentUser) {
-        if (itemData.id) {
-            const dRef = doc(db, `artifacts/${appId}/users/${currentUser.uid}/chocotejas`, itemData.id);
-            const id = itemData.id;
-            delete itemData.id;
-            await updateDoc(dRef, itemData);
-        } else {
-            itemData.createdAt = Date.now();
-            await addDoc(collection(db, `artifacts/${appId}/users/${currentUser.uid}/chocotejas`), itemData);
-        }
+    if (itemData.id) {
+        const idx = window.chocotejasState.items.findIndex(i => i.id === itemData.id);
+        if (idx > -1) window.chocotejasState.items[idx] = itemData;
     } else {
-        if (itemData.id) {
-            const idx = window.chocotejasState.items.findIndex(i => i.id === itemData.id);
-            if (idx > -1) window.chocotejasState.items[idx] = itemData;
-        } else {
-            itemData.id = Date.now().toString();
-            itemData.createdAt = Date.now();
-            window.chocotejasState.items.push(itemData);
-        }
-        renderItems(window.chocotejasState.items);
+        itemData.id = Date.now().toString();
+        itemData.createdAt = Date.now();
+        window.chocotejasState.items.push(itemData);
     }
+    saveDataToLocal();
+    renderItems(window.chocotejasState.items);
 };
 
 window.updateSales = async (id, delta) => {
@@ -191,24 +134,21 @@ window.updateSales = async (id, delta) => {
 
     let newSales = (item.sales || 0) + delta;
     if (newSales < 0) newSales = 0;
-
-    if (db && currentUser) {
-        const dRef = doc(db, `artifacts/${appId}/users/${currentUser.uid}/chocotejas`, id);
-        await updateDoc(dRef, { sales: newSales });
-    } else {
-        item.sales = newSales;
-        renderItems(window.chocotejasState.items);
+    
+    // Evitar que las ventas superen el stock (stock restante >= 0)
+    if (newSales > item.stock) {
+        newSales = item.stock;
     }
+
+    item.sales = newSales;
+    saveDataToLocal();
+    renderItems(window.chocotejasState.items);
 };
 
 window.deleteItem = async (id) => {
-    if (db && currentUser) {
-        const dRef = doc(db, `artifacts/${appId}/users/${currentUser.uid}/chocotejas`, id);
-        await deleteDoc(dRef);
-    } else {
-        window.chocotejasState.items = window.chocotejasState.items.filter(i => i.id !== id);
-        renderItems(window.chocotejasState.items);
-    }
+    window.chocotejasState.items = window.chocotejasState.items.filter(i => i.id !== id);
+    saveDataToLocal();
+    renderItems(window.chocotejasState.items);
 };
 
 // --- INTERFAZ DE MODALES ---
@@ -267,6 +207,11 @@ window.handleFormSubmit = async (e) => {
         cost: parseFloat(document.getElementById('form-cost').value) || 0,
         sales: parseInt(document.getElementById('form-sales').value) || 0
     };
+
+    // Evitar que al editar manualmente las ventas superen el stock
+    if (itemData.sales > itemData.stock) {
+        itemData.sales = itemData.stock;
+    }
 
     if (id) itemData.id = id;
 
